@@ -2310,7 +2310,7 @@ class RepositoryIT {
 
 			assertThatIllegalArgumentException().isThrownBy(() -> repository.findAllByPlaceWithin(p))
 				.withMessage(
-					"The WITHIN operation does not support a class org.springframework.data.geo.Polygon. You might want to pass a bounding box instead: class org.neo4j.springframework.data.repository.query.BoundingBox.of(polygon).");
+					"The WITHIN operation does not support a class org.springframework.data.geo.Polygon. You might want to pass a bounding box instead: class org.springframework.data.neo4j.repository.query.BoundingBox.of(polygon).");
 
 			persons = repository.findAllByPlaceNear(CLARION, distance);
 			assertThat(persons).isEmpty();

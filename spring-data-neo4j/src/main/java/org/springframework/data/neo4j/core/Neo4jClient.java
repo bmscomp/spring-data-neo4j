@@ -44,7 +44,7 @@ public interface Neo4jClient {
 
 	// TODO Create examples how to use the callbacks etc. with Springs TransactionTemplate to deal with rollbacks etc.
 
-	LogAccessor cypherLog = new LogAccessor(LogFactory.getLog("org.neo4j.springframework.data.cypher"));
+	LogAccessor cypherLog = new LogAccessor(LogFactory.getLog("org.springframework.data.neo4j.cypher"));
 
 	static Neo4jClient create(Driver driver) {
 

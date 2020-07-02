@@ -29,9 +29,9 @@
 	<logger name="OutboundMessageHandler" level="info" />
 	<logger name="InboundMessageDispatcher" level="info" />
 
-	<logger name="org.neo4j.springframework.data.cypher" level="info"/>
-	<logger name="org.neo4j.springframework.data" level="info"/>
-	<logger name="org.neo4j.springframework.data.test" level="info"/>
+	<logger name="org.springframework.data.neo4j.cypher" level="info"/>
+	<logger name="org.springframework.data.neo4j" level="info"/>
+	<logger name="org.springframework.data.neo4j.test" level="info"/>
 
 	<root level="warn">
 		<appender-ref ref="console" />

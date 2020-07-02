@@ -74,7 +74,7 @@ class DefaultNeo4jConverterTest {
 					() -> defaultNeo4jConverter.readValueForProperty(value, ClassTypeInformation.from(
 						ReactiveNeo4jClient.class)))
 				.withMessageStartingWith(
-					"Could not convert \"Das funktioniert nicht.\" into org.neo4j.springframework.data.core.ReactiveNeo4jClient;")
+					"Could not convert \"Das funktioniert nicht.\" into org.springframework.data.neo4j.core.ReactiveNeo4jClient;")
 				.withRootCauseInstanceOf(ConverterNotFoundException.class);
 		}
 	}

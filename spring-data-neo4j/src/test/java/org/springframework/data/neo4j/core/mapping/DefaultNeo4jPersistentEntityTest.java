@@ -54,7 +54,7 @@ class DefaultNeo4jPersistentEntityTest {
 			assertThatIllegalStateException()
 				.isThrownBy(() -> new Neo4jMappingContext().getPersistentEntity(EntityWithDuplicatedProperties.class))
 				.withMessage("Duplicate definition of property [name] in entity class "
-					+ "org.neo4j.springframework.data.core.mapping.DefaultNeo4jPersistentEntityTest$EntityWithDuplicatedProperties.");
+					+ "org.springframework.data.neo4j.core.mapping.DefaultNeo4jPersistentEntityTest$EntityWithDuplicatedProperties.");
 		}
 
 		@Test
@@ -63,7 +63,7 @@ class DefaultNeo4jPersistentEntityTest {
 				.isThrownBy(
 					() -> new Neo4jMappingContext().getPersistentEntity(EntityWithMultipleDuplicatedProperties.class))
 				.withMessage("Duplicate definition of properties [foo, name] in entity class "
-					+ "org.neo4j.springframework.data.core.mapping.DefaultNeo4jPersistentEntityTest$EntityWithMultipleDuplicatedProperties.");
+					+ "org.springframework.data.neo4j.core.mapping.DefaultNeo4jPersistentEntityTest$EntityWithMultipleDuplicatedProperties.");
 		}
 	}
 
@@ -87,7 +87,7 @@ class DefaultNeo4jPersistentEntityTest {
 			TypeWithInvalidDynamicRelationshipMappings2.class, TypeWithInvalidDynamicRelationshipMappings3.class })
 		void multipleDynamicAssociationsToTheSameEntityAreNotAllowed(Class<?> entityToTest) {
 
-			String expectedMessage = ".*TypeWithInvalidDynamicRelationshipMappings\\d already contains a dynamic relationship to class org\\.neo4j\\.springframework\\.data\\.core\\.mapping\\.Neo4jMappingContextTest\\$BikeNode. Only one dynamic relationship between to entities is permitted\\.";
+			String expectedMessage = ".*TypeWithInvalidDynamicRelationshipMappings\\d already contains a dynamic relationship to class org\\.springframework\\.data\\.neo4j\\.core\\.mapping\\.Neo4jMappingContextTest\\$BikeNode. Only one dynamic relationship between to entities is permitted\\.";
 			Neo4jMappingContext schema = new Neo4jMappingContext();
 			schema.setInitialEntitySet(new HashSet<>(Arrays.asList(entityToTest)));
 			assertThatIllegalStateException()

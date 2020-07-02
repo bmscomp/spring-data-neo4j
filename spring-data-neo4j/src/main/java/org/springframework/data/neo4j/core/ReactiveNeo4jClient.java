@@ -44,7 +44,7 @@ import org.springframework.data.neo4j.core.Neo4jClient.BindSpec;
 @API(status = API.Status.STABLE, since = "1.0")
 public interface ReactiveNeo4jClient {
 
-	LogAccessor cypherLog = new LogAccessor(LogFactory.getLog("org.neo4j.springframework.data.cypher"));
+	LogAccessor cypherLog = new LogAccessor(LogFactory.getLog("org.springframework.data.neo4j.cypher"));
 
 	static ReactiveNeo4jClient create(Driver driver) {
 
