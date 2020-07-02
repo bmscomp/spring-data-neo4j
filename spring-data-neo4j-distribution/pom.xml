@@ -12,9 +12,9 @@
 	<description>Distribution build for Spring Data Neo4j</description>
 
 	<parent>
-		<groupId>org.springframework.data</groupId>
-		<artifactId>spring-data-neo4j-parent</artifactId>
-		<version>5.4.0-SNAPSHOT</version>
+		<artifactId>spring-data-neo4j-rx-parent</artifactId>
+		<groupId>org.neo4j.springframework.data</groupId>
+		<version>${revision}${sha1}${changelist}</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
