@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 /**
- * Infrastructure for Neo4j specific repositories.
+ * This package contains the repository infrastructure.
  */
+@NonNullApi
 package org.springframework.data.neo4j.repository;
+
+import org.springframework.lang.NonNullApi;

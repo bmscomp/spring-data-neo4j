@@ -15,77 +15,109 @@
  */
 package org.springframework.data.neo4j.repository.support;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Optional;
+import static java.util.stream.Collectors.*;
 
-import org.neo4j.ogm.cypher.query.Pagination;
-import org.neo4j.ogm.session.Session;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.LongSupplier;
+import java.util.stream.StreamSupport;
+
+import org.apiguardian.api.API;
+import org.neo4j.cypherdsl.core.Statement;
+import org.neo4j.cypherdsl.core.StatementBuilder;
+import org.neo4j.cypherdsl.core.StatementBuilder.OngoingReadingAndReturn;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.neo4j.repository.Neo4jRepository;
-import org.springframework.data.neo4j.util.PagingAndSortingUtils;
+import org.springframework.data.neo4j.core.Neo4jOperations;
+import org.springframework.data.neo4j.core.mapping.Neo4jPersistentEntity;
+import org.springframework.data.neo4j.core.schema.CypherGenerator;
+import org.springframework.data.neo4j.repository.query.CypherAdapterUtils;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
 
 /**
- * Default implementation of the {@link org.springframework.data.repository.CrudRepository} interface. This will offer
- * you a more sophisticated interface than the plain {@link Session} .
+ * Repository base implementation for Neo4j.
  *
- * @param <T> the type of the entity to handle
- * @author Vince Bickers
- * @author Luanne Misquitta
- * @author Mark Angrish
- * @author Mark Paluch
- * @author Jens Schauder
  * @author Gerrit Meier
+ * @author Michael J. Simons
+ * @author Ján Šúr
+ * @since 1.0
+ * @param <T> the type of the domain class managed by this repository
+ * @param <ID> the type of the unique identifier of the domain class
  */
 @Repository
 @Transactional(readOnly = true)
-public class SimpleNeo4jRepository<T, ID extends Serializable> implements Neo4jRepository<T, ID> {
+@API(status = API.Status.STABLE, since = "1.0")
+public class SimpleNeo4jRepository<T, ID> implements PagingAndSortingRepository<T, ID> {
 
-	private static final int DEFAULT_QUERY_DEPTH = 1;
-	private static final String ID_MUST_NOT_BE_NULL = "The given id must not be null!";
+	private final Neo4jOperations neo4jOperations;
 
-	private final Class<T> clazz;
-	private final Session session;
+	private final Neo4jEntityInformation<T, ID> entityInformation;
 
-	/**
-	 * Creates a new {@link SimpleNeo4jRepository} to manage objects of the given domain type.
-	 *
-	 * @param domainClass must not be {@literal null}.
-	 * @param session must not be {@literal null}.
-	 */
-	public SimpleNeo4jRepository(Class<T> domainClass, Session session) {
-		Assert.notNull(domainClass, "Domain class must not be null!");
-		Assert.notNull(session, "Session must not be null!");
+	private final Neo4jPersistentEntity<T> entityMetaData;
 
-		this.clazz = domainClass;
-		this.session = session;
-	}
+	private final CypherGenerator cypherGenerator;
 
-	@Transactional
-	@Override
-	public <S extends T> S save(S entity) {
-		session.save(entity);
-		return entity;
-	}
+	protected SimpleNeo4jRepository(Neo4jOperations neo4jOperations, Neo4jEntityInformation<T, ID> entityInformation) {
 
-	@Transactional
-	@Override
-	public <S extends T> Iterable<S> saveAll(Iterable<S> entities) {
-		session.save(entities);
-		return entities;
+		this.neo4jOperations = neo4jOperations;
+		this.entityInformation = entityInformation;
+		this.entityMetaData = this.entityInformation.getEntityMetaData();
+		this.cypherGenerator = CypherGenerator.INSTANCE;
 	}
 
 	@Override
 	public Optional<T> findById(ID id) {
-		Assert.notNull(id, ID_MUST_NOT_BE_NULL);
-		return Optional.ofNullable(session.load(clazz, id));
+
+		return neo4jOperations.findById(id, this.entityInformation.getJavaType());
+	}
+
+	@Override
+	public List<T> findAllById(Iterable<ID> ids) {
+
+		return neo4jOperations.findAllById(ids, this.entityInformation.getJavaType());
+	}
+
+	@Override
+	public List<T> findAll() {
+
+		return this.neo4jOperations.findAll(this.entityInformation.getJavaType());
+	}
+
+	@Override
+	public List<T> findAll(Sort sort) {
+
+		Statement statement = cypherGenerator.prepareMatchOf(entityMetaData)
+			.returning(cypherGenerator.createReturnStatementForMatch(entityMetaData))
+			.orderBy(CypherAdapterUtils.toSortItems(entityMetaData, sort))
+			.build();
+
+		return this.neo4jOperations.findAll(statement, entityInformation.getJavaType());
+	}
+
+	@Override
+	public Page<T> findAll(Pageable pageable) {
+
+		OngoingReadingAndReturn returning = cypherGenerator.prepareMatchOf(entityMetaData)
+			.returning(cypherGenerator.createReturnStatementForMatch(entityMetaData));
+
+		StatementBuilder.BuildableStatement returningWithPaging =
+			CypherAdapterUtils.addPagingParameter(entityMetaData, pageable, returning);
+
+		Statement statement = returningWithPaging.build();
+
+		List<T> allResult = this.neo4jOperations.findAll(statement, entityInformation.getJavaType());
+		LongSupplier totalCountSupplier = this::count;
+		return PageableExecutionUtils.getPage(allResult, pageable, totalCountSupplier);
+	}
+
+	@Override
+	public long count() {
+
+		return neo4jOperations.count(this.entityInformation.getJavaType());
 	}
 
 	@Override
@@ -94,106 +126,48 @@ public class SimpleNeo4jRepository<T, ID extends Serializable> implements Neo4jR
 	}
 
 	@Override
-	public long count() {
-		return session.countEntitiesOfType(clazz);
+	@Transactional
+	public <S extends T> S save(S entity) {
+
+		return this.neo4jOperations.save(entity);
 	}
 
-	@Transactional
 	@Override
+	@Transactional
+	public <S extends T> List<S> saveAll(Iterable<S> entities) {
+
+		return this.neo4jOperations.saveAll(entities);
+	}
+
+	@Override
+	@Transactional
 	public void deleteById(ID id) {
-		findById(id).ifPresent(session::delete);
+
+		this.neo4jOperations.deleteById(id, this.entityInformation.getJavaType());
 	}
 
-	@Transactional
 	@Override
-	public void delete(T t) {
-		session.delete(t);
+	@Transactional
+	public void delete(T entity) {
+
+		ID id = this.entityInformation.getId(entity);
+		this.deleteById(id);
 	}
 
-	@Transactional
 	@Override
-	public void deleteAll(Iterable<? extends T> ts) {
-		for (T t : ts) {
-			session.delete(t);
-		}
-	}
-
 	@Transactional
-	@Override
 	public void deleteAll() {
-		session.deleteAll(clazz);
+
+		this.neo4jOperations.deleteAll(this.entityInformation.getJavaType());
 	}
 
+	@Override
 	@Transactional
-	@Override
-	public <S extends T> S save(S s, int depth) {
-		session.save(s, depth);
-		return s;
-	}
+	public void deleteAll(Iterable<? extends T> entities) {
 
-	@Transactional
-	@Override
-	public <S extends T> Iterable<S> save(Iterable<S> ses, int depth) {
-		session.save(ses, depth);
-		return ses;
-	}
+		List<Object> ids = StreamSupport.stream(entities.spliterator(), false)
+			.map(this.entityInformation::getId).collect(toList());
 
-	@Override
-	public Optional<T> findById(ID id, int depth) {
-		return Optional.ofNullable(session.load(clazz, id, depth));
-	}
-
-	// findAll and variants
-	@Override
-	public Iterable<T> findAll() {
-		return findAll(DEFAULT_QUERY_DEPTH);
-	}
-
-	@Override
-	public Iterable<T> findAll(int depth) {
-		return session.loadAll(clazz, depth);
-	}
-
-	@Override
-	public Iterable<T> findAllById(Iterable<ID> longs) {
-		return findAllById(longs, DEFAULT_QUERY_DEPTH);
-	}
-
-	@Override
-	public Iterable<T> findAllById(Iterable<ID> ids, int depth) {
-		return session.loadAll(clazz, (Collection<ID>) ids, depth);
-	}
-
-	@Override
-	public Iterable<T> findAll(Sort sort) {
-		return findAll(sort, DEFAULT_QUERY_DEPTH);
-	}
-
-	@Override
-	public Iterable<T> findAll(Sort sort, int depth) {
-		return session.loadAll(clazz, PagingAndSortingUtils.convert(sort), depth);
-	}
-
-	@Override
-	public Iterable<T> findAllById(Iterable<ID> ids, Sort sort) {
-		return findAllById(ids, sort, DEFAULT_QUERY_DEPTH);
-	}
-
-	@Override
-	public Iterable<T> findAllById(Iterable<ID> ids, Sort sort, int depth) {
-		return session.loadAll(clazz, (Collection<ID>) ids, PagingAndSortingUtils.convert(sort), depth);
-	}
-
-	@Override
-	public Page<T> findAll(Pageable pageable) {
-		return findAll(pageable, DEFAULT_QUERY_DEPTH);
-	}
-
-	@Override
-	public Page<T> findAll(Pageable pageable, int depth) {
-		Pagination pagination = new Pagination(pageable.getPageNumber(), pageable.getPageSize());
-		Collection<T> data = session.loadAll(clazz, PagingAndSortingUtils.convert(pageable.getSort()), pagination, depth);
-
-		return PageableExecutionUtils.getPage(new ArrayList<>(data), pageable, () -> session.countEntitiesOfType(clazz));
+		this.neo4jOperations.deleteAllById(ids, this.entityInformation.getJavaType());
 	}
 }

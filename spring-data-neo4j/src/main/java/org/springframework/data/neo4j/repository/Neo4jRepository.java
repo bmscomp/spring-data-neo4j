@@ -15,66 +15,62 @@
  */
 package org.springframework.data.neo4j.repository;
 
-import java.io.Serializable;
-import java.util.Optional;
+import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.repository.query.QueryByExampleExecutor;
 
 /**
- * Neo4j OGM specific extension of {@link org.springframework.data.repository.Repository}.
+ * Neo4j specific {@link org.springframework.data.repository.Repository} interface.
  *
- * @author Vince Bickers
- * @author Mark Angrish
- * @author Mark Paluch
- * @author Jens Schauder
+ * @author Michael J. Simons
+ * @author Ján Šúr
+ * @param <T>  type of the domain class to map
+ * @param <ID> identifier type in the domain class
+ * @since 1.0
  */
 @NoRepositoryBean
-public interface Neo4jRepository<T, ID extends Serializable> extends PagingAndSortingRepository<T, ID> {
+public interface Neo4jRepository<T, ID> extends PagingAndSortingRepository<T, ID>, QueryByExampleExecutor<T> {
 
-	<S extends T> S save(S s, int depth);
-
-	<S extends T> Iterable<S> save(Iterable<S> entities, int depth);
-
-	Optional<T> findById(ID id, int depth);
-
-	Iterable<T> findAll();
-
-	Iterable<T> findAll(int depth);
-
-	Iterable<T> findAll(Sort sort);
-
-	Iterable<T> findAll(Sort sort, int depth);
-
-	Iterable<T> findAllById(Iterable<ID> ids);
-
-	Iterable<T> findAllById(Iterable<ID> ids, int depth);
-
-	Iterable<T> findAllById(Iterable<ID> ids, Sort sort);
-
-	Iterable<T> findAllById(Iterable<ID> ids, Sort sort, int depth);
-
-	/**
-	 * Returns a {@link Page} of entities meeting the paging restriction provided in the {@code Pageable} object.
-	 * {@link Page#getTotalPages()} returns an estimation of the total number of pages and should not be relied upon for
-	 * accuracy.
-	 *
-	 * @param pageable
-	 * @return a page of entities
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.CrudRepository#saveAll(java.lang.Iterable)
 	 */
-	Page<T> findAll(Pageable pageable);
+	@Override <S extends T> List<S> saveAll(Iterable<S> entities);
 
-	/**
-	 * Returns a {@link Page} of entities meeting the paging restriction provided in the {@code Pageable} object.
-	 * {@link Page#getTotalPages()} returns an estimation of the total number of pages and should not be relied upon for
-	 * accuracy.
-	 *
-	 * @param pageable
-	 * @param depth
-	 * @return a page of entities
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.CrudRepository#findAll()
 	 */
-	Page<T> findAll(Pageable pageable, int depth);
+	@Override
+	List<T> findAll();
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.CrudRepository#findAllById(java.lang.Iterable)
+	 */
+	@Override
+	List<T> findAllById(Iterable<ID> iterable);
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.PagingAndSortingRepository#findAll(org.springframework.data.domain.Sort)
+	 */
+	@Override
+	List<T> findAll(Sort sort);
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.query.QueryByExampleExecutor#findAll(org.springframework.data.domain.Example)
+	 */
+	@Override <S extends T> List<S> findAll(Example<S> example);
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.springframework.data.repository.query.QueryByExampleExecutor#findAll(org.springframework.data.domain.Example, org.springframework.data.domain.Sort)
+	 */
+	@Override <S extends T> List<S> findAll(Example<S> example, Sort sort);
 }

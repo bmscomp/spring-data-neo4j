@@ -15,75 +15,29 @@
  */
 package org.springframework.data.neo4j.test;
 
-import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.AliasFor;
-import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
-import org.springframework.data.repository.config.DefaultRepositoryBaseClass;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 /**
- * This is an internal annotation to provide the minimum setup for an integration test against a Neo4j instance running
- * through the Neo4j test harness. It is not meant to be used outside SDN. <br>
- * <br>
- * It turns on {@link EnableNeo4jRepositories Neo4j repositories} as well as
- * {@link org.springframework.transaction.annotation.EnableTransactionManagement transaction management} and provides an
- * injectable {@link org.neo4j.graphdb.GraphDatabaseService graph database service} for manipulating data. <br>
- * If a test provides a custom {@link org.neo4j.ogm.config.Configuration configuration bean} it takes precedence over
- * the one that is created by default. <br>
- * The default is to test SDN via Bolt-Transport. That can be changed in a dedicaded test setup by providing a system
- * property name {@code integration-test-mode} with one of the following values:
+ * This annotations triggers the {@link Neo4jExtension}, that provides a driver instance for Neo4j integration tests.
+ * The important point here is that the extension possibly dirties a Spring context by closing the driver instance, so
+ * it has been meta annotated with {@link DirtiesContext}.
  *
- * <pre>
- *     -Dintegration-test-mode=BOLT
- *     -Dintegration-test-mode=EMBEDDED
- *     -Dintegration-test-mode=HTTP
- * </pre>
- *
- * Be aware that those setup require the presence of the corresponding OGM transport on the classpath. Tests that test
- * features specific to a transport (like Bookmarks, only available for Bolt) or native types (Only available for Bolt
- * and Embedded) should create their own {@link org.neo4j.ogm.config.Configuration Configuration}-bean.
+ * That issue happens mostly when one and the same integration tests is run several times via an IDE: Spring will detect
+ * that the context configuration is the same and reuse the old context based on contextual information from the first run.
+ * The Neo4j extension will dutiful create a new connection and driver instance, but Spring won't never use it.
  *
  * @author Michael J. Simons
- * @since 5.2
- * @soundtrack Die Ärzte - Nach uns die Sintflut
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Documented
-@EnableNeo4jRepositories
-@Import({ SessionFactoryRegistrar.class, Neo4jTestServerConfiguration.class })
+@ExtendWith({ SpringExtension.class, Neo4jExtension.class })
+@DirtiesContext
 public @interface Neo4jIntegrationTest {
-
-	enum IntegrationTestMode {
-		BOLT, HTTP, EMBEDDED
-	}
-
-	/**
-	 * @return The list of domain packages to be passed on to the {@link org.neo4j.ogm.session.SessionFactory}.
-	 */
-	String[] domainPackages();
-
-	/**
-	 * @return The list of packages to scan for {@link org.springframework.data.neo4j.repository.Neo4jRepository Neo4j
-	 *         repositories}.
-	 */
-	@AliasFor(annotation = EnableNeo4jRepositories.class, attribute = "basePackages")
-	String[] repositoryPackages() default {};
-
-	@AliasFor(annotation = EnableNeo4jRepositories.class, attribute = "repositoryBaseClass")
-	Class<?> repositoryBaseClass() default DefaultRepositoryBaseClass.class;
-
-	@AliasFor(annotation = EnableNeo4jRepositories.class, attribute = "considerNestedRepositories")
-	boolean considerNestedRepositories() default false;
-
-	@AliasFor(annotation = EnableNeo4jRepositories.class, attribute = "transactionManagerRef")
-	String transactionManagerRef() default "transactionManager";
-
-	@AliasFor(annotation = EnableNeo4jRepositories.class, attribute = "enableDefaultTransactions")
-	boolean enableDefaultTransactions() default true;
 }
